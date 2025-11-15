@@ -1,0 +1,20 @@
+# Build / binaries
+build/
+dist/
+*.o
+*.exe
+*.out
+
+# IDE / editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets / config (nooit in Git!)
+*.env
+*.secret
+config.local.*
