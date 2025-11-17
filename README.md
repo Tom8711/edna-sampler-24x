@@ -5,7 +5,7 @@ Het doel is een modulair, schaalbaar systeem dat 24 afzonderlijke pompkanalen ka
 
 ---
 
-## 📁 Projectstructuur
+## Projectstructuur
 
 .
 ├── backend/ # Backend/API, dataprocessing, dashboards
@@ -19,7 +19,7 @@ Het doel is een modulair, schaalbaar systeem dat 24 afzonderlijke pompkanalen ka
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Repository clonen
 
