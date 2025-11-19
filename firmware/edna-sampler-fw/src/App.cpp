@@ -1,6 +1,7 @@
 #include "App.h"
 
-void App::begin() {
+void App::begin()
+{
     Serial.begin(115200);
     delay(500);
 
@@ -10,13 +11,16 @@ void App::begin() {
     Serial.println();
 
     _lastHeartbeat = millis();
+
 }
 
-void App::loop() {
+void App::loop()
+{
     const unsigned long now = millis();
 
     // Simuleer een "virtueel systeem" dat hartslagen logt
-    if (now - _lastHeartbeat >= _heartbeatIntervalMs) {
+    if (now - _lastHeartbeat >= _heartbeatIntervalMs)
+    {
         _lastHeartbeat = now;
 
         Serial.print("[");
@@ -28,4 +32,5 @@ void App::loop() {
     // - virtuele pomptaken
     // - geplande sampling-runs
     // - test van scheduler-logica
+
 }
