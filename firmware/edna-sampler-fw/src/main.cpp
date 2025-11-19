@@ -1,30 +1,34 @@
-// #include <Arduino.h>
-// #include "App.h"
-
-// App app;
-
-// void setup() {
-//     app.begin();
-// }
-
-// void loop() {
-//     app.loop();
-// }
+// main.cpp is de enige entrypoint voor de ESP32-S3.
+// Zorg dat geen andere bestanden setup()/loop() definiëren.
 
 #include <Arduino.h>
+#include "Pump.h"
+
+// voorbeeldpomp op willekeurige pins
+Pump pump(5, 6);
 
 void setup() {
   Serial.begin(115200);
-  delay(2000);  // even wachten tot USB staat
-  Serial.println("=== ESP32-S3 teststart ===");
+  delay(2000);
+  Serial.println("Sampler debug-mode test");
+  pump.begin();
 }
 
 void loop() {
-  static uint32_t last = 0;
-  uint32_t now = millis();
-  if (now - last >= 1000) {
-    last = now;
-    Serial.print("Heartbeat: ");
-    Serial.println(now);
-  }
+  Serial.println("Forward...");
+  pump.startPump();
+  delay(1000);
+
+  Serial.println("Stop...");
+  pump.stopPump();
+  delay(1000);
+
+  Serial.println("Reverse...");
+  pump.reverseDirection();
+  delay(1000);
+
+  Serial.println("Stop...");
+  pump.stopPump();
+  delay(2000);
 }
+
