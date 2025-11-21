@@ -1,7 +1,7 @@
 #include "PumpHardware.h"
 
 // Als DEBUG_PUMP_MODE gedefinieerd is, wordt alles gesimuleerd en gelogd.
-// Anders gaat het 'echt' naar de pins.
+// Anders gaat het naar de pins.
 
 void pumpHardwareBegin(uint8_t pinForward, uint8_t pinReverse) {
 #ifdef DEBUG_PUMP_MODE
