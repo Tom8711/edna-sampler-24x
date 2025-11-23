@@ -2,8 +2,8 @@
 // Zorg dat geen andere bestanden setup()/loop() definiëren.
 
 #include <Arduino.h>
+#include <SPI.h>
 #include "Pump.h"
-#include "Clock.h"
 
 //voorbeeldpomp op willekeurige pins
 Pump pump(5, 6);
