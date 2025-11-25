@@ -27,3 +27,13 @@ void clockLogNow();
 
 // Optioneel: RTC-tijd zetten op compile-tijd (handig bij eerste keer instellen)
 void clockSetCompileTime();
+
+// Helper: minutes from now
+bool clockNowPlusMinutes(ClockDateTime &out, uint32_t minutes);
+
+// Alarm plannen op een absolute tijd (Alarm1, minute-match)
+bool clockScheduleAlarmAt(const ClockDateTime &t);
+
+// Alarm plannen over X minuten vanaf nu
+bool clockScheduleAlarmInMinutes(uint32_t minutes);
+

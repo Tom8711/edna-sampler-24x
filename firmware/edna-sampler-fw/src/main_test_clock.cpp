@@ -1,34 +1,43 @@
-// main.cpp is de enige entrypoint voor de ESP32-S3.
-// Zorg dat geen andere bestanden setup()/loop() definiëren.
-
 #include <Arduino.h>
-#include "Pump.h"
+#include <RTClib.h>   // voor DateTime
 #include "Clock.h"
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
-  delay(2000); // seriële monitor laten opstarten
+  delay(500);
 
-  Serial.println();
-  Serial.println(F("=== eDNA-sampler: DS3231 kloktest ==="));
+  Serial.println(F("=== Compile time vs RTC test ==="));
 
+  // 1) Compile-tijd bepalen (wat clockSetCompileTime ook gebruikt)
+  DateTime compileTime(F(__DATE__), F(__TIME__));
+
+  Serial.print(F("Compile time: "));
+  Serial.print(compileTime.year());   Serial.print("-");
+  Serial.print(compileTime.month());  Serial.print("-");
+  Serial.print(compileTime.day());    Serial.print(" ");
+  Serial.print(compileTime.hour());   Serial.print(":");
+  Serial.print(compileTime.minute()); Serial.print(":");
+  Serial.print(compileTime.second()); Serial.println();
+
+  // 2) RTC initialiseren en op compile-tijd zetten
   clockBegin();
+  clockSetCompileTime();
 
-  // Eenmalig de tijd op compile-tijd zetten (alleen eerste keer nodig)
-  // Daarna kun je deze regel weer uitcommentariëren om de RTC niet telkens te overschrijven.
-  // clockSetCompileTime();
-
+  // 3) RTC-tijd via clockNow() teruglezen
+  ClockDateTime now;
+  if (clockNow(now)) {
+    Serial.print(F("RTC after adjust: "));
+    Serial.print(now.year);   Serial.print("-");
+    Serial.print(now.month);  Serial.print("-");
+    Serial.print(now.day);    Serial.print(" ");
+    Serial.print(now.hour);   Serial.print(":");
+    Serial.print(now.minute); Serial.print(":");
+    Serial.print(now.second); Serial.println();
+  } else {
+    Serial.println(F("RTC after adjust: RTC niet OK"));
+  }
 }
 
-void loop()
-{
-  static unsigned long lastLog = 0;
-
-  if (millis() - lastLog >= 1000)
-  { // elke seconde loggen
-    lastLog = millis();
-    clockLogNow();
-  }
-
+void loop() {
+  // niets nodig
 }

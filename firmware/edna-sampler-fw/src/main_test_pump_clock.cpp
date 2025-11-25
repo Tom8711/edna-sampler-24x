@@ -1,156 +1,112 @@
-// main_test_pump_clock.cpp
-//
-// Test 1 pomp met klokmodule (DS3231)
-// Sequence:
-//   5s forward  -> 3s stop -> 5s reverse -> 3s stop
-// Elke seconde: tijd loggen via klok
-// Geen echte hardware-aansturing als DEBUG_PUMP_MODE is gedefinieerd
-// (PumpHardware zou in dat geval alleen loggen).
-
 #include <Arduino.h>
-#include "Clock.h"
-#include "Pump.h"
+#include <Preferences.h>
+#include "esp_sleep.h"
 
-// Pas deze pinnen aan als jouw hardware anders is:
-static const int PUMP0_PIN_FORWARD = 5;
-static const int PUMP0_PIN_REVERSE = 6;
+#include "Pump.h"
+#include "PumpHardware.h"
+#include "Clock.h"
+
+Preferences prefs;
+
+// DS3231 INT/SQW -> ESP32 GPIO4 (PAS AAN als je een andere pin gebruikt)
+static const gpio_num_t RTC_INT_PIN = GPIO_NUM_4;
+
+static const int PUMP_POWER = 255;
+static const uint32_t FORWARD_MS = 5000;
+static const uint32_t REVERSE_MS = 5000;
+static const uint32_t PAUSE_MS = 3000;
+
+// Interval tussen runs via RTC-alarm
+static const uint32_t NEXT_RUN_MINUTES = 2;
+
+uint32_t runCounter = 0;
 
 // Pomp-instantie
-Pump pump0(PUMP0_PIN_FORWARD, PUMP0_PIN_REVERSE);
+Pump pump(PUMP_PIN_FORWARD, PUMP_PIN_REVERSE);
 
-// Eenvoudige state machine voor de sequence
-enum PumpPhase {
-  PHASE_FORWARD = 0,
-  PHASE_STOP1,
-  PHASE_REVERSE,
-  PHASE_STOP2,
-  PHASE_DONE      // eventueel hergebruikt of eindstatus
-};
-
-PumpPhase currentPhase = PHASE_FORWARD;
-
-// Timestamps
-unsigned long phaseStartMs = 0;
-unsigned long lastClockLogMs = 0;
-
-// Hulpfunctie om van fase te wisselen
-void enterPhase(PumpPhase next) {
-  currentPhase = next;
-  phaseStartMs = millis();
-
-  switch (currentPhase) {
-    case PHASE_FORWARD:
-      Serial.println("[PHASE] FORWARD (5s)");
-      pump0.startPump(255);     // max power; in debug-mode alleen log
-      break;
-
-    case PHASE_STOP1:
-      Serial.println("[PHASE] STOP 1 (3s)");
-      pump0.stopPump();
-      break;
-
-    case PHASE_REVERSE:
-      Serial.println("[PHASE] REVERSE (5s)");
-      pump0.reverseDirection(255);
-      break;
-
-    case PHASE_STOP2:
-      Serial.println("[PHASE] STOP 2 (3s)");
-      pump0.stopPump();
-      break;
-
-    case PHASE_DONE:
-      Serial.println("[PHASE] DONE (blijft gestopt)");
-      pump0.stopPump();
-      break;
-  }
-}
-
-void setup() {
+void setup()
+{
   Serial.begin(115200);
-  // Kleine delay zodat de seriële monitor rustig kan openen
-  delay(2000);
+  delay(500);
 
   Serial.println();
-  Serial.println("=== main_test_pump_clock.cpp ===");
-  Serial.println("Test: pomp + klok, debug-mode");
-#ifdef DEBUG_PUMP_MODE
-  Serial.println("DEBUG_PUMP_MODE is actief (geen echte hardware-aansturing).");
-#else
-  Serial.println("LET OP: DEBUG_PUMP_MODE staat NIET aan (hardware wordt echt aangestuurd).");
-#endif
+  Serial.println("=== TEST: Pump + Clock + DeepSleep via DS3231 ===");
 
-  // Klok initialiseren
+  // Wake-up oorzaak loggen
+  esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+  Serial.print("Wake-up cause: ");
+  Serial.println((int)cause);
+
+  // NVS / Preferences
+  prefs.begin("edna", false);
+  runCounter = prefs.getULong("runCounter", 0);
+  runCounter++;
+  prefs.putULong("runCounter", runCounter);
+  Serial.printf("Run counter: %lu\n", (unsigned long)runCounter);
+
+  // RTC + klok
   clockBegin();
-  // Optioneel: compile-time als starttijd gebruiken
-  clockSetCompileTime();
-  Serial.println("[Clock] Clock initialized & set to compile time (indien gewenst).");
 
-  // Pomp initialiseren
-  pump0.begin();
-  Serial.println("[Pump] Pump initialized.");
+    Serial.print("Compile time: ");
+  Serial.print(__DATE__);
+  Serial.print(" ");
+  Serial.println(__TIME__);
 
-  // Start in de FORWARD-fase
-  enterPhase(PHASE_FORWARD);
+  Serial.print("RTC time: ");
+  clockLogNow();
 
-  // Startwaarden voor logging
-  unsigned long now = millis();
-  phaseStartMs = now;
-  lastClockLogMs = now;
+  Serial.print("Huidige tijd (RTC): ");
+  clockLogNow();
+
+  // INT-pin van DS3231 als input met pull-up
+  pinMode((int)RTC_INT_PIN, INPUT_PULLUP);
+
+  // Pomp-hardware (gesimuleerd of echt, afhankelijk van PumpHardware.cpp)
+  pumpHardwareBegin(PUMP_PIN_FORWARD, PUMP_PIN_REVERSE);
+  pump.begin();
+
+  // --- Pomp-sequentie ---
+  Serial.println("Start pomp-sequentie: forward -> stop -> reverse -> stop");
+
+  Serial.println("Forward ON");
+  pump.startPump(PUMP_POWER);
+  delay(FORWARD_MS);
+
+  Serial.println("Stop");
+  pump.stopPump();
+  delay(PAUSE_MS);
+
+  Serial.println("Reverse ON");
+  pump.reverseDirection(PUMP_POWER);
+  delay(REVERSE_MS);
+
+  Serial.println("Stop");
+  pump.stopPump();
+
+  // --- RTC-alarm over 2 minuten ---
+  Serial.printf("Plan RTC-alarm over %lu minuten...\n", (unsigned long)NEXT_RUN_MINUTES);
+  if (!clockScheduleAlarmInMinutes(NEXT_RUN_MINUTES))
+  {
+    Serial.println("Kon RTC-alarm niet plannen, geen deep sleep.");
+    return;
+  }
+
+  // Nog een keer tijd loggen ter controle
+  Serial.print("Na het plannen is de tijd: ");
+  clockLogNow();
+
+  Serial.println("Ga nu in deep sleep, wake via DS3231 INT (low).");
+  delay(200); // even tijd om de log uit te sturen
+
+  // Let op: we gebruiken HIER GEEN DEBUG_PUMP_MODE-guard meer.
+  // Deep sleep is nu altijd actief in deze test.
+  esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+  esp_sleep_enable_ext0_wakeup(RTC_INT_PIN, 0); // 0 = low niveau (INT/SQW active low)
+
+  esp_deep_sleep_start();
 }
 
-void loop() {
-  unsigned long now = millis();
-
-  // Elke seconde tijd loggen via klok
-  if (now - lastClockLogMs >= 1000) {
-    lastClockLogMs = now;
-
-    Serial.print("[Clock] Now = ");
-    // Verwachting: clockLogNow() logt de huidige tijd zelf
-    clockLogNow();
-  }
-
-  // Fase-timing
-  unsigned long elapsed = now - phaseStartMs;
-
-  switch (currentPhase) {
-    case PHASE_FORWARD:
-      // 5s forward
-      if (elapsed >= 5000UL) {
-        enterPhase(PHASE_STOP1);
-      }
-      break;
-
-    case PHASE_STOP1:
-      // 3s stop
-      if (elapsed >= 3000UL) {
-        enterPhase(PHASE_REVERSE);
-      }
-      break;
-
-    case PHASE_REVERSE:
-      // 5s reverse
-      if (elapsed >= 5000UL) {
-        enterPhase(PHASE_STOP2);
-      }
-      break;
-
-    case PHASE_STOP2:
-      // 3s stop
-      if (elapsed >= 3000UL) {
-        // Keuze 1: sequence één keer draaien, dan stoppen
-        enterPhase(PHASE_DONE);
-
-        // Als je de sequence eindeloos wilt herhalen, vervang bovenstaande regel door:
-        // enterPhase(PHASE_FORWARD);
-      }
-      break;
-
-    case PHASE_DONE:
-      // Niets meer doen; pomp blijft uit.
-      break;
-  }
-
-  // Geen delay(), zodat millis()-gebaseerde timing strak blijft.
+void loop()
+{
+  // wordt nooit bereikt; alles gebeurt in setup()
 }

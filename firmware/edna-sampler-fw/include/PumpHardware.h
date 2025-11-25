@@ -1,6 +1,10 @@
 #pragma once
 #include <Arduino.h>
 
+// Hardware-pinnen voor de pomp
+constexpr uint8_t PUMP_PIN_FORWARD = 5;
+constexpr uint8_t PUMP_PIN_REVERSE = 6;
+
 // Deze functies worden door Pump.cpp gebruikt.
 // Ze doen óf echte hardware-aansturing, óf alleen loggen (debug mode).
 
