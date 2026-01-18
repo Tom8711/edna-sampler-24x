@@ -82,7 +82,7 @@ void clockSetCompileTime()
   Serial.println(F("[RTC] Tijd ingesteld op compile-tijd."));
 }
 
-bool clockNowPlusMinutes(ClockDateTime &out, uint32_t minutes)
+bool clockNowPlusMinutes(ClockDateTime &out, uint32_t minutes, uint32_t hours)
 {
   if (!rtcOk)
   {
@@ -93,7 +93,7 @@ bool clockNowPlusMinutes(ClockDateTime &out, uint32_t minutes)
   DateTime now = rtc.now();
 
   // TimeSpan(dagen, uren, minuten, seconden)
-  TimeSpan delta(0, 0, minutes, 0);
+  TimeSpan delta(0, hours, minutes, 0);
   DateTime future = now + delta;
 
   out.year = future.year();
@@ -124,7 +124,7 @@ bool clockScheduleAlarmAt(const ClockDateTime &t)
   // Alarm1 op "match minute" (jaar/maand/dag/uur/minuut)
   rtc.setAlarm1(
       target,
-      DS3231_A1_Minute);
+      DS3231_A1_Hour);
 
   char buf[32];
   snprintf(
@@ -138,10 +138,10 @@ bool clockScheduleAlarmAt(const ClockDateTime &t)
   return true;
 }
 
-bool clockScheduleAlarmInMinutes(uint32_t minutes)
+bool clockScheduleAlarmInMinutes(uint32_t minutes, uint32_t hours)
 {
   ClockDateTime future{};
-  if (!clockNowPlusMinutes(future, minutes))
+  if (!clockNowPlusMinutes(future, minutes, hours))
   {
     return false;
   }

@@ -15,23 +15,25 @@ static const gpio_num_t RTC_INT_PIN = GPIO_NUM_4;
 // Pomp 1: IO5 vooruit, IO6 achteruit
 // Pomp 2: IO7 vooruit, IO8 achteruit
 Pump pump1(5, 6);
-Pump pump2(7, 8);
+Pump pump2(15, 16);
 
 // Tijden in milliseconden
 static const uint32_t PUMP_FORWARD_MS = 60 * 1000; // 1 minuut
 static const uint32_t PUMP_REVERSE_MS = 10 * 1000; // 10 seconden
 
 // Hoe lang we willen slapen tussen pomp 1 en pomp 2 (in minuten)
-static const uint32_t SLEEP_MINUTES = 10;
+static const uint32_t SLEEP_MINUTES = 15;
+static const uint32_t SLEEP_HOURS = 9;
 
 // In welke "fase" van het schema zitten we?
 // 0 = nog niets gedaan (we moeten pomp 1 draaien)
 // 1 = pomp 1 is gedaan, na wake-up moeten we pomp 2 draaien
 // 2 = alles gedaan
-enum PumpPhase : uint8_t {
-    PHASE_FIRST  = 0,
+enum PumpPhase : uint8_t
+{
+    PHASE_FIRST = 0,
     PHASE_SECOND = 1,
-    PHASE_DONE   = 2
+    PHASE_DONE = 2
 };
 
 // Herbruikbare functie: pompsequence (vooruit + achteruit) uitvoeren
@@ -44,7 +46,7 @@ void runPumpSequence(Pump &pump, const char *label)
 
     Serial.print(label);
     Serial.println(": vooruit (1 minuut)...");
-    pump.startPump();  // default power = 255
+    pump.startPump(); // default power = 255
     delay(PUMP_FORWARD_MS);
 
     Serial.print(label);
@@ -75,10 +77,10 @@ void enterDeepSleepAndScheduleNext(PumpPhase nextPhase)
 
     // Alarm over SLEEP_MINUTES minuten plannen
     Serial.print("Plan alarm over ");
-    Serial.print(SLEEP_MINUTES);
-    Serial.println(" minuten...");
+    Serial.print(SLEEP_HOURS);
+    Serial.println(" uren...");
 
-    if (!clockScheduleAlarmInMinutes(SLEEP_MINUTES))
+    if (!clockScheduleAlarmInMinutes(SLEEP_MINUTES, SLEEP_HOURS))
     {
         Serial.println("Kon geen alarm plannen. Geen deep sleep.");
         return;
@@ -107,9 +109,6 @@ void setup()
     // NVS openen (namespace "pump_two_sleep")
     prefs.begin("pump_two_sleep", false);
 
-    // TIJDELIJKE RESET:
-    prefs.putUChar("phase", PHASE_FIRST);
-
     // Klok initialiseren
     clockBegin();
 
@@ -128,6 +127,9 @@ void setup()
     // Huidige fase uit NVS lezen (default: PHASE_FIRST)
     uint8_t phaseVal = prefs.getUChar("phase", static_cast<uint8_t>(PHASE_FIRST));
     PumpPhase phase = static_cast<PumpPhase>(phaseVal);
+
+    Serial.print("RTC time: ");
+    clockLogNow();
 
     Serial.print("Huidige fase uit NVS: ");
     Serial.println(phaseVal);
@@ -148,17 +150,17 @@ void setup()
         // Alles klaar, markeer als DONE
         prefs.putUChar("phase", static_cast<uint8_t>(PHASE_DONE));
         Serial.println("Beide pompen zijn klaar. Geen nieuwe deep sleep.");
+        prefs.putUChar("phase", PHASE_FIRST);
     }
     else
     {
         Serial.println("Fase 2 (DONE): niets meer te doen.");
     }
 
-    Serial.println("Einde van setup(). Er gebeurt niets meer in loop().");
+    Serial.println("Einde van setup(). Er gebeurt niets meer in loop(). Na herstart start fase 1 opnieuw");
 }
 
 void loop()
 {
     // Leeg: alle logica gebeurt in setup()
 }
-

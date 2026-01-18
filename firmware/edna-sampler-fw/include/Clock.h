@@ -29,11 +29,11 @@ void clockLogNow();
 void clockSetCompileTime();
 
 // Helper: minutes from now
-bool clockNowPlusMinutes(ClockDateTime &out, uint32_t minutes);
+bool clockNowPlusMinutes(ClockDateTime &out, uint32_t minutes, uint32_t hours);
 
 // Alarm plannen op een absolute tijd (Alarm1, minute-match)
 bool clockScheduleAlarmAt(const ClockDateTime &t);
 
 // Alarm plannen over X minuten vanaf nu
-bool clockScheduleAlarmInMinutes(uint32_t minutes);
+bool clockScheduleAlarmInMinutes(uint32_t minutes, uint32_t hours);
 
