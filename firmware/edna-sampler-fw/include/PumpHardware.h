@@ -12,3 +12,8 @@ void pumpHardwareBegin(uint8_t pinForward, uint8_t pinReverse);
 void pumpHardwareStartForward(uint8_t pinForward, uint8_t pinReverse, uint32_t power);
 void pumpHardwareStartReverse(uint8_t pinForward, uint8_t pinReverse, uint32_t power);
 void pumpHardwareStop(uint8_t pinForward, uint8_t pinReverse);
+
+// Optioneel: IO-expander backend (alleen gebruikt als PUMP_USE_IOEXPANDER is gedefinieerd)
+class PumpIoBackend;
+void pumpHardwareSetBackend(PumpIoBackend* backend);
+
